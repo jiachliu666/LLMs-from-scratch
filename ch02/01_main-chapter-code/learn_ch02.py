@@ -491,9 +491,7 @@ class Section5_SlidingWindow(unittest.TestCase):
         取第一个 batch 的 input，验证形状为 [4, 2]。
         """
         # TODO: 调用 create_dataloader_v1 创建 dataloader，赋值给 dl
-        dl = None  # ← 改这里
-        raise NotImplementedError("TODO 5.1: 创建 max_length=2 的 dataloader")
-
+        dl = create_dataloader_v1(self.raw_text, batch_size=4, max_length=2, stride=2, shuffle=False)
         inputs, targets = next(iter(dl))
         self.assertEqual(inputs.shape, torch.Size([4, 2]))
 
@@ -509,9 +507,7 @@ class Section5_SlidingWindow(unittest.TestCase):
         tokenizer = tiktoken.get_encoding("gpt2")
 
         # TODO: 创建 GPTDatasetV1，赋值给 dataset
-        dataset = None  # ← 改这里
-        raise NotImplementedError("TODO 5.2: 创建 dataset 并计算长度")
-
+        dataset = GPTDatasetV1(self.raw_text, tokenizer, max_length=4, stride=2)
         # 验证样本数量合理（不要求精确，误差 ±10 即可）
         expected = (5145 - 4) // 2
         self.assertAlmostEqual(len(dataset), expected, delta=10)
@@ -533,7 +529,11 @@ class Section5_SlidingWindow(unittest.TestCase):
         context_size = 4
 
         # TODO: 循环 4 次，打印 context 和 target，不需要断言，打印即可
-        raise NotImplementedError("TODO 5.3: 打印 next-token prediction 示例")
+
+        for i in range(1, context_size + 1):
+            context = enc_sample[:i]
+            target = enc_sample[i]
+            print(f"context={tokenizer.decode(context)!r} --> next={tokenizer.decode([target])!r}")
 
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -580,8 +580,7 @@ class Section6_TokenEmbeddings(unittest.TestCase):
         torch.manual_seed(42)
 
         # TODO: 创建 Embedding 层，赋值给 emb
-        emb = None  # ← 改这里
-        raise NotImplementedError("TODO 6.1: 创建 Embedding 层")
+        emb = torch.nn.Embedding(10, 4)
 
         self.assertEqual(emb.weight.shape, torch.Size([10, 4]))
         out = emb(torch.tensor([7]))
@@ -598,9 +597,8 @@ class Section6_TokenEmbeddings(unittest.TestCase):
         target_id = 42
 
         # TODO: 用两种方式获取 ID=42 的向量，赋值给 via_forward 和 via_weight
-        via_forward = None  # ← emb(torch.tensor([42])) 的结果（第 0 行）
-        via_weight = None  # ← emb.weight[42]
-        raise NotImplementedError("TODO 6.2: 验证 embedding 等价于查表")
+        via_forward = emb(torch.tensor([target_id]))[0]  # ← emb(torch.tensor([42])) 的结果（第 0 行）
+        via_weight = emb.weight[target_id]  # ← emb.weight[42]
 
         self.assertTrue(torch.allclose(via_forward, via_weight))
 
@@ -670,11 +668,10 @@ class Section7_PositionalEmbeddings(unittest.TestCase):
         batch_size = 4
 
         # TODO: 完成以下步骤
-        token_embedding_layer = None  # ← 步骤 1
-        pos_embedding_layer = None  # ← 步骤 2
-        token_ids = None  # ← 步骤 3: torch.randint(...)
-        input_embeddings = None  # ← 步骤 4
-        raise NotImplementedError("TODO 7.1: 组合 token 和位置嵌入")
+        token_embedding_layer = torch.nn.Embedding(vocab_size, embed_dim)
+        pos_embedding_layer = torch.nn.Embedding(context_length, embed_dim)
+        token_ids = torch.randint(0, vocab_size, (batch_size, context_length))
+        input_embeddings = token_embedding_layer(token_ids) + pos_embedding_layer(torch.arange(context_length))
 
         self.assertEqual(input_embeddings.shape, torch.Size([4, 8, 64]))
 
@@ -696,9 +693,8 @@ class Section7_PositionalEmbeddings(unittest.TestCase):
 
         # TODO: 计算 token_id 在 position=0 时的 input_embedding → vec_at_0
         # TODO: 计算 token_id 在 position=3 时的 input_embedding → vec_at_3
-        vec_at_0 = None  # ← token_emb(42) + pos_emb(0)
-        vec_at_3 = None  # ← token_emb(42) + pos_emb(3)
-        raise NotImplementedError("TODO 7.2: 验证位置改变向量")
+        vec_at_0 = token_emb(torch.tensor([token_id])) + pos_emb(torch.tensor([0]))  # ← token_emb(42) + pos_emb(0)
+        vec_at_3 = token_emb(torch.tensor([token_id])) + pos_emb(torch.tensor([3]))  # ← token_emb(42) + pos_emb(3)
 
         # 同一 token，不同位置，向量应该不同
         self.assertFalse(torch.allclose(vec_at_0, vec_at_3))
@@ -755,28 +751,24 @@ class Section8_EndToEnd(unittest.TestCase):
         import tiktoken as tk
 
         # TODO: 步骤 1: 读文本
-        raw_text = None  # ← load_verdict()
+        raw_text = load_verdict()  # ← load_verdict()
 
         # TODO: 步骤 2: BPE 编码
-        tokenizer = None  # ← tk.get_encoding("gpt2")
-        token_ids = None  # ← tokenizer.encode(raw_text, ...)
+        tokenizer = tk.get_encoding("gpt2")  # ← tk.get_encoding("gpt2")
+        token_ids = tokenizer.encode(raw_text)  # ← tokenizer.encode(raw_text, ...)
 
         # TODO: 步骤 3: 滑动窗口，取前 4 个 input 和 target
         max_length = 16
         stride = 16
-        inputs_list = []
-        # for i in range(...):
-        #     inputs_list.append(...)
-        # inputs = torch.stack(inputs_list[:4])
-
-        inputs = None  # ← torch.stack(...)
+        dl = create_dataloader_v1(raw_text, batch_size=4, max_length=max_length, stride=stride, shuffle=False)
+        inputs, _ = next(iter(dl))
 
         # TODO: 步骤 4 & 5: 创建并使用 embedding 层
-        token_emb_layer = None
-        pos_emb_layer = None
-        input_embeddings = None
+        token_emb_layer = torch.nn.Embedding(50257, 128)
+        pos_emb_layer = torch.nn.Embedding(max_length, 128)
+        input_embeddings = token_emb_layer(inputs) + pos_emb_layer(torch.arange(max_length))
 
-        raise NotImplementedError("TODO: 综合练习，完整实现数据管道")
+        # raise NotImplementedError("TODO: 综合练习，完整实现数据管道")
 
         self.assertEqual(input_embeddings.shape, torch.Size([4, 16, 128]))
 
