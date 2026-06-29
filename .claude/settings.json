@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(uv python *)",
+      "Bash(uv pip *)",
+      "Bash(.venv/bin/python -c \"import torch, tiktoken, matplotlib, tensorflow, numpy, pandas; print\\('torch:', torch.__version__\\); print\\('tiktoken:', tiktoken.__version__\\); print\\('TF:', tensorflow.__version__\\); print\\('numpy:', numpy.__version__\\)\")"
+    ]
+  }
+}
