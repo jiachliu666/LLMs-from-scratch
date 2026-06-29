@@ -27,3 +27,13 @@ python -m pytest /Users/jiachengliu/Documents/LLMs-from-scratch/ch02/01_main-cha
 
 
 python -m pytest /Users/jiachengliu/Documents/LLMs-from-scratch/ch02/01_main-chapter-code/learn_ch02.py::Section8_EndToEnd::test_ex_full_pipeline_from_scratch -v
+
+
+python -m pytest /Users/jiachengliu/Documents/LLMs-from-scratch/ch02/03_bonus_embedding-vs-matmul/learn_embedding_vs_linear.py::Section1_EmbeddingIsLookup::test_ex_01_output_shape_2d_input -v
+
+
+python -m pytest /Users/jiachengliu/Documents/LLMs-from-scratch/ch02/04_bonus_dataloader-intuition/learn_dataloader_intuition.py::Section1_InputTargetRelationship -v
+
+
+python -m pytest /Users/jiachengliu/Documents/LLMs-from-scratch/ch02/04_bonus_dataloader-intuition/learn_dataloader_intuition.py::Section2_StrideEffect -v
+
