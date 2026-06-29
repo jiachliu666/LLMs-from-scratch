@@ -37,3 +37,22 @@ python -m pytest /Users/jiachengliu/Documents/LLMs-from-scratch/ch02/04_bonus_da
 
 python -m pytest /Users/jiachengliu/Documents/LLMs-from-scratch/ch02/04_bonus_dataloader-intuition/learn_dataloader_intuition.py::Section2_StrideEffect -v
 
+/Users/jiachengliu/Documents/LLMs-from-scratch/ch03/01_main-chapter-code/learn_ch03.py
+
+
+python -m pytest /Users/jiachengliu/Documents/LLMs-from-scratch/ch03/01_main-chapter-code/learn_ch03.py::Section1_SimpleAttention -v
+
+
+python -m pytest /Users/jiachengliu/Documents/LLMs-from-scratch/ch03/01_main-chapter-code/learn_ch03.py::Section2_ScaledDotProductAttention -v
+
+
+python -m pytest /Users/jiachengliu/Documents/LLMs-from-scratch/ch03/01_main-chapter-code/learn_ch03.py::Section3_SelfAttentionClass -v
+
+
+python -m pytest /Users/jiachengliu/Documents/LLMs-from-scratch/ch03/01_main-chapter-code/learn_ch03.py::Section4_CausalMask -v
+
+
+
+python -m pytest /Users/jiachengliu/Documents/LLMs-from-scratch/ch03/01_main-chapter-code/learn_ch03.py::Section5_AttentionDropout -v
+
+
