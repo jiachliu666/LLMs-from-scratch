@@ -67,10 +67,7 @@ class LayerNorm(nn.Module):
 
 class GELU(nn.Module):
     def forward(self, x):
-        return 0.5 * x * (1 + torch.tanh(
-            torch.sqrt(torch.tensor(2.0 / torch.pi)) *
-            (x + 0.044715 * torch.pow(x, 3))
-        ))
+        return 0.5 * x * (1 + torch.tanh(torch.sqrt(torch.tensor(2.0 / torch.pi)) * (x + 0.044715 * torch.pow(x, 3))))
 
 
 class FeedForward(nn.Module):
@@ -94,21 +91,20 @@ class MultiHeadAttention(nn.Module):
         self.num_heads = num_heads
         self.head_dim = d_out // num_heads
         self.W_query = nn.Linear(d_in, d_out, bias=qkv_bias)
-        self.W_key   = nn.Linear(d_in, d_out, bias=qkv_bias)
+        self.W_key = nn.Linear(d_in, d_out, bias=qkv_bias)
         self.W_value = nn.Linear(d_in, d_out, bias=qkv_bias)
         self.out_proj = nn.Linear(d_out, d_out)
         self.dropout = nn.Dropout(dropout)
-        self.register_buffer("mask", torch.triu(
-            torch.ones(context_length, context_length), diagonal=1))
+        self.register_buffer("mask", torch.triu(torch.ones(context_length, context_length), diagonal=1))
 
     def forward(self, x):
         b, num_tokens, d_in = x.shape
-        keys    = self.W_key(x).view(b, num_tokens, self.num_heads, self.head_dim).transpose(1, 2)
+        keys = self.W_key(x).view(b, num_tokens, self.num_heads, self.head_dim).transpose(1, 2)
         queries = self.W_query(x).view(b, num_tokens, self.num_heads, self.head_dim).transpose(1, 2)
-        values  = self.W_value(x).view(b, num_tokens, self.num_heads, self.head_dim).transpose(1, 2)
+        values = self.W_value(x).view(b, num_tokens, self.num_heads, self.head_dim).transpose(1, 2)
         attn_scores = queries @ keys.transpose(2, 3)
         attn_scores.masked_fill_(self.mask.bool()[:num_tokens, :num_tokens], -torch.inf)
-        attn_weights = torch.softmax(attn_scores / keys.shape[-1]**0.5, dim=-1)
+        attn_weights = torch.softmax(attn_scores / keys.shape[-1] ** 0.5, dim=-1)
         attn_weights = self.dropout(attn_weights)
         context_vec = (attn_weights @ values).transpose(1, 2).contiguous().view(b, num_tokens, self.d_out)
         return self.out_proj(context_vec)
@@ -118,11 +114,13 @@ class TransformerBlock(nn.Module):
     def __init__(self, cfg):
         super().__init__()
         self.att = MultiHeadAttention(
-            d_in=cfg["emb_dim"], d_out=cfg["emb_dim"],
+            d_in=cfg["emb_dim"],
+            d_out=cfg["emb_dim"],
             context_length=cfg["context_length"],
             num_heads=cfg["n_heads"],
             dropout=cfg["drop_rate"],
-            qkv_bias=cfg["qkv_bias"])
+            qkv_bias=cfg["qkv_bias"],
+        )
         self.ff = FeedForward(cfg)
         self.norm1 = LayerNorm(cfg["emb_dim"])
         self.norm2 = LayerNorm(cfg["emb_dim"])
@@ -133,30 +131,29 @@ class TransformerBlock(nn.Module):
         x = self.norm1(x)
         x = self.att(x)
         x = self.drop_shortcut(x)
-        x = x + shortcut          # 残差连接 1：attention
+        x = x + shortcut  # 残差连接 1：attention
 
         shortcut = x
         x = self.norm2(x)
         x = self.ff(x)
         x = self.drop_shortcut(x)
-        x = x + shortcut          # 残差连接 2：FFN
+        x = x + shortcut  # 残差连接 2：FFN
         return x
 
 
 class GPTModel(nn.Module):
     def __init__(self, cfg):
         super().__init__()
-        self.tok_emb  = nn.Embedding(cfg["vocab_size"], cfg["emb_dim"])
-        self.pos_emb  = nn.Embedding(cfg["context_length"], cfg["emb_dim"])
+        self.tok_emb = nn.Embedding(cfg["vocab_size"], cfg["emb_dim"])
+        self.pos_emb = nn.Embedding(cfg["context_length"], cfg["emb_dim"])
         self.drop_emb = nn.Dropout(cfg["drop_rate"])
-        self.trf_blocks = nn.Sequential(
-            *[TransformerBlock(cfg) for _ in range(cfg["n_layers"])])
+        self.trf_blocks = nn.Sequential(*[TransformerBlock(cfg) for _ in range(cfg["n_layers"])])
         self.final_norm = LayerNorm(cfg["emb_dim"])
         self.out_head = nn.Linear(cfg["emb_dim"], cfg["vocab_size"], bias=False)
 
     def forward(self, in_idx):
-        batch_size, seq_len = in_idx.shape
-        tok_embeds = self.tok_emb(in_idx)
+        batch_size, seq_len = in_idx.shape  # [2, 6]
+        tok_embeds = self.tok_emb(in_idx)  # [2, 6, 32]
         pos_embeds = self.pos_emb(torch.arange(seq_len, device=in_idx.device))
         x = tok_embeds + pos_embeds
         x = self.drop_emb(x)
@@ -231,8 +228,8 @@ class Section1_GPTConfig(unittest.TestCase):
         logits = model(idx)
 
         # TODO
-        expected_shape = None
-        raise NotImplementedError("TODO 1.1")
+        expected_shape = torch.Size([2, 6, 100])
+        # raise NotImplementedError("TODO 1.1")
         self.assertEqual(logits.shape, expected_shape)
 
     def test_ex_02_emb_dim_divisible_by_n_heads(self):
@@ -242,8 +239,8 @@ class Section1_GPTConfig(unittest.TestCase):
         """
         cfg = GPT_CONFIG_124M
         # TODO
-        remainder = None
-        raise NotImplementedError("TODO 1.2")
+        remainder = GPT_CONFIG_124M["emb_dim"] % GPT_CONFIG_124M["n_heads"]
+        # raise NotImplementedError("TODO 1.2")
         self.assertEqual(remainder, 0)
 
 
@@ -300,7 +297,7 @@ class Section2_LayerNorm(unittest.TestCase):
     def test_demo_05_eps_prevents_div_zero(self):
         """常数输入（方差为 0）时，eps 防止除以零"""
         x_const = torch.ones(2, 4)  # 所有元素相同，方差=0
-        out = self.ln(x_const)      # 不应该报错
+        out = self.ln(x_const)  # 不应该报错
         self.assertFalse(torch.isnan(out).any())
 
     def test_demo_06_independent_across_samples(self):
@@ -324,15 +321,16 @@ class Section2_LayerNorm(unittest.TestCase):
 
         公式: norm_x = (x - mean) / sqrt(var + eps)
         """
-        x = torch.tensor([[1.0, 2.0, 3.0, 4.0],
-                           [4.0, 3.0, 2.0, 1.0]])
+        x = torch.tensor([[1.0, 2.0, 3.0, 4.0], [4.0, 3.0, 2.0, 1.0]])
         ln = LayerNorm(emb_dim=4)
 
         # TODO: 手动计算
-        mean = None
-        var  = None
-        manual_out = None
-        raise NotImplementedError("TODO 2.1")
+
+        mean = x.mean(dim=-1, keepdim=True)
+        var = x.var(dim=-1, keepdim=True, unbiased=False)
+        manual_out = (x - mean) / torch.sqrt(var + 1e-5)
+
+        # raise NotImplementedError("TODO 2.1")
 
         expected = ln(x)
         self.assertTrue(torch.allclose(manual_out, expected, atol=1e-5))
@@ -396,8 +394,8 @@ class Section3_GELU(unittest.TestCase):
         x = torch.tensor(-1.0)
         gelu_out = self.gelu(x).item()
         relu_out = self.relu(x).item()
-        self.assertEqual(relu_out, 0.0)        # ReLU 直接截断
-        self.assertNotEqual(gelu_out, 0.0)     # GELU 有非零值（约 -0.16）
+        self.assertEqual(relu_out, 0.0)  # ReLU 直接截断
+        self.assertNotEqual(gelu_out, 0.0)  # GELU 有非零值（约 -0.16）
 
     def test_demo_04_relu_hard_zero_for_negative(self):
         """ReLU 对所有负数输出精确的 0"""
@@ -418,11 +416,12 @@ class Section3_GELU(unittest.TestCase):
         验证 GELU(-0.5) < 0（负数）而 ReLU(-0.5) = 0
         """
         x = torch.tensor(-0.5)
+        import math
 
         # TODO
-        gelu_out = None
-        relu_out = None
-        raise NotImplementedError("TODO 3.1")
+        gelu_out = 0.5 * x * (1 + torch.tanh(math.sqrt(2 / 3.1415926) * (x + 0.044715 * x**3)))
+        relu_out = max(0, x)
+        # raise NotImplementedError("TODO 3.1")
 
         self.assertLess(gelu_out, 0.0)
         self.assertEqual(relu_out, 0.0)
@@ -435,8 +434,8 @@ class Section3_GELU(unittest.TestCase):
         out = self.gelu(x)
 
         # TODO
-        expected_shape = None
-        raise NotImplementedError("TODO 3.2")
+        expected_shape = torch.Size([2, 4, 768])
+        # raise NotImplementedError("TODO 3.2")
         self.assertEqual(out.shape, expected_shape)
 
 
@@ -510,8 +509,8 @@ class Section4_FeedForward(unittest.TestCase):
         out = ffn(x)
 
         # TODO
-        expected_shape = None
-        raise NotImplementedError("TODO 4.1")
+        expected_shape = torch.Size([2, 10, 768])
+        # raise NotImplementedError("TODO 4.1")
         self.assertEqual(out.shape, expected_shape)
 
     def test_ex_02_intermediate_dimension(self):
@@ -519,8 +518,8 @@ class Section4_FeedForward(unittest.TestCase):
         练习 4.2: emb_dim=768 时，FFN 中间层的维度是多少？
         """
         # TODO
-        intermediate_dim = None
-        raise NotImplementedError("TODO 4.2")
+        intermediate_dim = 768 * 4
+        # raise NotImplementedError("TODO 4.2")
         self.assertEqual(intermediate_dim, 3072)
 
 
@@ -557,17 +556,14 @@ class Section5_ResidualConnection(unittest.TestCase):
         layer_sizes = [3, 3, 3, 3, 3, 1]
 
         # 无残差网络
-        layers = nn.ModuleList([
-            nn.Sequential(nn.Linear(layer_sizes[i], layer_sizes[i+1]), GELU())
-            for i in range(len(layer_sizes)-1)
-        ])
+        layers = nn.ModuleList([nn.Sequential(nn.Linear(layer_sizes[i], layer_sizes[i + 1]), GELU()) for i in range(len(layer_sizes) - 1)])
 
-        x = torch.tensor([[1., 0., -1.]])
+        x = torch.tensor([[1.0, 0.0, -1.0]])
         out = x
         for layer in layers:
             out = layer(out)
 
-        loss = nn.MSELoss()(out, torch.tensor([[0.]]))
+        loss = nn.MSELoss()(out, torch.tensor([[0.0]]))
         loss.backward()
 
         grads = [layers[i][0].weight.grad.abs().mean().item() for i in range(5)]
@@ -593,13 +589,13 @@ class Section5_ResidualConnection(unittest.TestCase):
         layers = nn.ModuleList([ResBlock() for _ in range(5)])
         final = nn.Linear(d, 1)
 
-        x = torch.tensor([[1., 0., -1.]])
+        x = torch.tensor([[1.0, 0.0, -1.0]])
         out = x
         for layer in layers:
             out = layer(out)
         out = final(out)
 
-        loss = nn.MSELoss()(out, torch.tensor([[0.]]))
+        loss = nn.MSELoss()(out, torch.tensor([[0.0]]))
         loss.backward()
 
         grads = [layers[i].linear.weight.grad.abs().mean().item() for i in range(5)]
@@ -609,8 +605,8 @@ class Section5_ResidualConnection(unittest.TestCase):
     def test_demo_03_residual_requires_same_shape(self):
         """残差连接要求 x 和 layer(x) 形状相同"""
         x = torch.randn(2, 4, 32)
-        layer_same = nn.Linear(32, 32)   # 输出形状相同
-        layer_diff = nn.Linear(32, 64)   # 输出形状不同
+        layer_same = nn.Linear(32, 32)  # 输出形状相同
+        layer_diff = nn.Linear(32, 64)  # 输出形状不同
 
         # 形状相同：可以相加
         out_same = layer_same(x) + x
@@ -630,8 +626,8 @@ class Section5_ResidualConnection(unittest.TestCase):
         layer_out = torch.tensor([[0.1, 0.2, 0.3]])
 
         # TODO
-        residual_out = None
-        raise NotImplementedError("TODO 5.1")
+        residual_out = x + layer_out
+        # raise NotImplementedError("TODO 5.1")
 
         expected = torch.tensor([[1.1, 2.2, 3.3]])
         self.assertTrue(torch.allclose(residual_out, expected))
@@ -689,10 +685,10 @@ class Section6_TransformerBlock(unittest.TestCase):
     def test_demo_02_pre_norm_order(self):
         """验证 Pre-Norm：norm1 在 attention 之前，norm2 在 FFN 之前"""
         # 检查 TransformerBlock 有 norm1 和 norm2
-        self.assertTrue(hasattr(self.block, 'norm1'))
-        self.assertTrue(hasattr(self.block, 'norm2'))
-        self.assertTrue(hasattr(self.block, 'att'))
-        self.assertTrue(hasattr(self.block, 'ff'))
+        self.assertTrue(hasattr(self.block, "norm1"))
+        self.assertTrue(hasattr(self.block, "norm2"))
+        self.assertTrue(hasattr(self.block, "att"))
+        self.assertTrue(hasattr(self.block, "ff"))
 
     def test_demo_03_block_can_stack(self):
         """n 个 TransformerBlock 可以串联（输入输出形状一致）"""
@@ -724,11 +720,11 @@ class Section6_TransformerBlock(unittest.TestCase):
         child_names = [name for name, _ in self.block.named_children()]
         # TODO: 取消注释验证
         # raise NotImplementedError("TODO 6.1")
-        self.assertIn('att', child_names)
-        self.assertIn('ff', child_names)
-        self.assertIn('norm1', child_names)
-        self.assertIn('norm2', child_names)
-        self.assertIn('drop_shortcut', child_names)
+        self.assertIn("att", child_names)
+        self.assertIn("ff", child_names)
+        self.assertIn("norm1", child_names)
+        self.assertIn("norm2", child_names)
+        self.assertIn("drop_shortcut", child_names)
 
     def test_ex_02_pre_norm_vs_post_norm(self):
         """
@@ -910,32 +906,27 @@ class Section8_TextGeneration(unittest.TestCase):
     def test_demo_01_generate_extends_sequence(self):
         """生成 N 个新 token 后，序列长度增加 N"""
         idx = torch.randint(0, self.cfg["vocab_size"], (1, 4))
-        out = generate_text_simple(self.model, idx, max_new_tokens=3,
-                                   context_size=self.cfg["context_length"])
+        out = generate_text_simple(self.model, idx, max_new_tokens=3, context_size=self.cfg["context_length"])
         self.assertEqual(out.shape[1], 4 + 3)
 
     def test_demo_02_greedy_is_deterministic(self):
         """Greedy decoding 是确定性的：相同输入总是相同输出"""
         idx = torch.randint(0, self.cfg["vocab_size"], (1, 4))
-        out1 = generate_text_simple(self.model, idx.clone(), max_new_tokens=5,
-                                    context_size=self.cfg["context_length"])
-        out2 = generate_text_simple(self.model, idx.clone(), max_new_tokens=5,
-                                    context_size=self.cfg["context_length"])
+        out1 = generate_text_simple(self.model, idx.clone(), max_new_tokens=5, context_size=self.cfg["context_length"])
+        out2 = generate_text_simple(self.model, idx.clone(), max_new_tokens=5, context_size=self.cfg["context_length"])
         self.assertTrue(torch.equal(out1, out2))
 
     def test_demo_03_original_tokens_preserved(self):
         """生成的序列前缀与输入完全一致"""
         idx = torch.tensor([[1, 2, 3, 4]])
-        out = generate_text_simple(self.model, idx, max_new_tokens=3,
-                                   context_size=self.cfg["context_length"])
+        out = generate_text_simple(self.model, idx, max_new_tokens=3, context_size=self.cfg["context_length"])
         self.assertTrue(torch.equal(out[:, :4], idx))
 
     def test_demo_04_context_cropping(self):
         """输入超过 context_size 时，只取最后 context_size 个 token"""
         # 输入 20 个 token，但 context_size=16
         idx = torch.randint(0, self.cfg["vocab_size"], (1, 20))
-        out = generate_text_simple(self.model, idx, max_new_tokens=1,
-                                   context_size=self.cfg["context_length"])
+        out = generate_text_simple(self.model, idx, max_new_tokens=1, context_size=self.cfg["context_length"])
         self.assertEqual(out.shape[1], 21)
 
     def test_demo_05_argmax_picks_highest_logit(self):
@@ -1011,8 +1002,8 @@ class Section9_InterviewQuestions(unittest.TestCase):
         relu = nn.ReLU()
 
         x = torch.tensor([-2.0, -1.0, -0.5])
-        self.assertTrue((relu(x) == 0).all())     # ReLU 全部截断为 0
-        self.assertFalse((gelu(x) == 0).any())    # GELU 都不为 0
+        self.assertTrue((relu(x) == 0).all())  # ReLU 全部截断为 0
+        self.assertFalse((gelu(x) == 0).any())  # GELU 都不为 0
 
     def test_iq_03_residual_connection_gradient_flow(self):
         """
@@ -1023,7 +1014,7 @@ class Section9_InterviewQuestions(unittest.TestCase):
         """
         x = torch.tensor([1.0, 2.0, 3.0], requires_grad=True)
         f_x = x * 0.0001  # 极小的变换，模拟梯度消失
-        out = f_x + x     # 残差连接
+        out = f_x + x  # 残差连接
 
         out.sum().backward()
         # 梯度 = 0.0001 + 1 ≈ 1.0001，不会消失
@@ -1084,10 +1075,10 @@ class Section9_InterviewQuestions(unittest.TestCase):
         ffn = FeedForward(cfg)
 
         # 验证第一层扩张 4 倍，第二层压缩回来
-        first_linear  = ffn.layers[0]
+        first_linear = ffn.layers[0]
         second_linear = ffn.layers[2]
 
-        self.assertEqual(first_linear.out_features,  4 * cfg["emb_dim"])
+        self.assertEqual(first_linear.out_features, 4 * cfg["emb_dim"])
         self.assertEqual(second_linear.out_features, cfg["emb_dim"])
 
 

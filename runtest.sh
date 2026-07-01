@@ -56,3 +56,14 @@ python -m pytest /Users/jiachengliu/Documents/LLMs-from-scratch/ch03/01_main-cha
 python -m pytest /Users/jiachengliu/Documents/LLMs-from-scratch/ch03/01_main-chapter-code/learn_ch03.py::Section5_AttentionDropout -v
 
 
+python -m pytest /Users/jiachengliu/Documents/LLMs-from-scratch/ch04/01_main-chapter-code/learn_ch04.py::Section1_GPTConfig -v
+
+python -m pytest /Users/jiachengliu/Documents/LLMs-from-scratch/ch04/01_main-chapter-code/learn_ch04.py::Section2_LayerNorm -v
+
+python -m pytest /Users/jiachengliu/Documents/LLMs-from-scratch/ch04/01_main-chapter-code/learn_ch04.py::Section3_GELU -v
+
+
+python -m pytest /Users/jiachengliu/Documents/LLMs-from-scratch/ch04/01_main-chapter-code/learn_ch04.py::Section4_FeedForward -v
+
+python -m pytest /Users/jiachengliu/Documents/LLMs-from-scratch/ch04/01_main-chapter-code/learn_ch04.py::Section5_ResidualConnection -v
+
